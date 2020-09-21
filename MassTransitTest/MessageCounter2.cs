@@ -16,7 +16,7 @@ namespace MassTransitTest
             this.logger = logger;
         }
 
-        public void Consumed(string key, Guid[] messagedIds)
+        public void Consumed(string key, Guid[] workProcessIds)
         {
             lock (consumedIds)
             {
@@ -27,7 +27,7 @@ namespace MassTransitTest
                     consumedIds.Add(key, oldIds);
                 }
 
-                var newIds = messagedIds.Where(x => oldIds.Contains(x) == false).ToArray();
+                var newIds = workProcessIds.Where(x => oldIds.Contains(x) == false).ToArray();
                 oldIds.AddRange(newIds);
 
                 var sb = new StringBuilder();

@@ -18,6 +18,9 @@ namespace MassTransitTest
 {
     class Program
     {
+        private static readonly int ProcessesCount = 10;
+        private static readonly int MessagesCountPerProcess = 5000;
+
         static async Task Main(string[] args)
         {
             File.Delete("batch.log");
@@ -45,10 +48,14 @@ namespace MassTransitTest
             {
                 await bus.StartAsync();
 
-                var messages = Enumerable.Range(0, 10).Select(_ => new InitProcess());
-                await bus.SendConcurrently(messages, 10);
-
-                await bus.Send(new InitProcess());
+                var messages = Enumerable.Range(0, ProcessesCount)
+                    .Select(_ => new InitProcess
+                    {
+                        WorkProcessIds = Enumerable.Range(0, MessagesCountPerProcess)
+                            .Select(x => NewId.NextGuid())
+                            .ToArray()
+                    });
+                await bus.SendConcurrently(messages, ProcessesCount);
 
                 Console.ReadKey();
             }
@@ -104,15 +111,17 @@ namespace MassTransitTest
 
     public class InitProcess
     {
+        public Guid[] WorkProcessIds { get; set; }
     }
 
     public class DoWork
-    {     
+    {
+        public Guid WorkProcessId { get; set; }
     }
 
     public class DoSomeExtraWork
     {
-        public Guid InternalId { get; set; }
+        public Guid WorkProcessId { get; set; }
     }
 
     public class DoWorkConsumerDefinition : ConsumerDefinition<DoWorkConsumer>
@@ -158,14 +167,9 @@ namespace MassTransitTest
 
         public async Task Consume(ConsumeContext<InitProcess> context)
         {
-            //logger.LogInformation("Init process");
-
-            //await Task.Delay(TimeSpan.FromMilliseconds(1000));
-
-            var messages = Enumerable.Range(1, 5000).Select(_ => new DoWork());
-            foreach (var msg in messages)
+            foreach (var id in context.Message.WorkProcessIds)
             {
-                await context.Send(msg);
+                await context.Send(new DoWork { WorkProcessId = id });
             }
 
             counter.Consumed("InitProcess", new[] { context.MessageId.Value });
@@ -185,16 +189,12 @@ namespace MassTransitTest
 
         public async Task Consume(ConsumeContext<Batch<DoWork>> context)
         {
-            //logger.LogInformation("Consumed {0} DoWork: {1}", context.Message.Length, string.Join(",", context.Message.Select(x => x.MessageId).ToArray()));
-
-            //await Task.Delay(TimeSpan.FromMilliseconds(1000));
-
             foreach (var msg in context.Message)
             {
-                await context.Send(new DoSomeExtraWork { InternalId = msg.MessageId.Value });
+                await context.Send(new DoSomeExtraWork { WorkProcessId = msg.Message.WorkProcessId });
             }
 
-            counter.Consumed("DoWork", context.Message.Select(x => x.MessageId.Value).ToArray());
+            counter.Consumed("DoWork", context.Message.Select(x => x.Message.WorkProcessId).ToArray());
         }
     }
 
@@ -211,11 +211,7 @@ namespace MassTransitTest
 
         public async Task Consume(ConsumeContext<Batch<DoSomeExtraWork>> context)
         {
-            //logger.LogInformation("Consumed {0} DoSomeExtraWork: {1}", context.Message.Length, string.Join(",", context.Message.Select(x => x.MessageId).ToArray()));
-
-            //await Task.Delay(TimeSpan.FromMilliseconds(1000));
-
-            counter.Consumed("DoSomeExtraWork", context.Message.Select(x => x.Message.InternalId).ToArray());
+            counter.Consumed("DoSomeExtraWork", context.Message.Select(x => x.Message.WorkProcessId).ToArray());
         }
     }
 }
