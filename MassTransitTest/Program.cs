@@ -55,7 +55,7 @@ namespace MassTransitTest
                             .Select(x => NewId.NextGuid())
                             .ToArray()
                     });
-                await bus.SendConcurrently(messages, ProcessesCount);
+                await bus.SendConcurrently(messages, 5);
 
                 Console.ReadKey();
             }
