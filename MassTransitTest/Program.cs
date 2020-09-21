@@ -18,7 +18,7 @@ namespace MassTransitTest
 {
     class Program
     {
-        private static readonly int ProcessesCount = 10;
+        private static readonly int ProcessesCount = 20;
         private static readonly int MessagesCountPerProcess = 5000;
         public static readonly TimeSpan ConsumersDelay = TimeSpan.FromMilliseconds(200);
 
@@ -107,115 +107,6 @@ namespace MassTransitTest
             cfg.ConfigureEndpoints(context);
 
             cfg.UseInMemoryOutbox(c => c.ConcurrentMessageDelivery = true);
-        }
-    }
-
-    public class InitProcess
-    {
-        public Guid[] WorkProcessIds { get; set; }
-    }
-
-    public class DoWork
-    {
-        public Guid WorkProcessId { get; set; }
-    }
-
-    public class DoSomeExtraWork
-    {
-        public Guid WorkProcessId { get; set; }
-    }
-
-    public class DoWorkConsumerDefinition : ConsumerDefinition<DoWorkConsumer>
-    {
-        protected override void ConfigureConsumer(IReceiveEndpointConfigurator endpointConfigurator,
-            IConsumerConfigurator<DoWorkConsumer> consumerConfigurator)
-        {
-            ((IRabbitMqReceiveEndpointConfigurator)endpointConfigurator).PrefetchCount = 1200;
-            consumerConfigurator.Options<BatchOptions>(b =>
-            {
-                b.MessageLimit = 300;
-                b.TimeLimit = TimeSpan.FromMilliseconds(200);
-                b.ConcurrencyLimit = 10;
-            });
-        }
-    }
-
-    public class DoSomeExtraWorkConsumerDefinition : ConsumerDefinition<DoSomeExtraWorkConsumer>
-    {
-        protected override void ConfigureConsumer(IReceiveEndpointConfigurator endpointConfigurator,
-            IConsumerConfigurator<DoSomeExtraWorkConsumer> consumerConfigurator)
-        {
-            ((IRabbitMqReceiveEndpointConfigurator)endpointConfigurator).PrefetchCount = 1200;
-            consumerConfigurator.Options<BatchOptions>(b =>
-            {
-                b.MessageLimit = 300;
-                b.TimeLimit = TimeSpan.FromMilliseconds(200);
-                b.ConcurrencyLimit = 10;
-            });
-        }
-    }
-
-    public class InitProcessConsumer : IConsumer<InitProcess>
-    {
-        private readonly ILogger<InitProcessConsumer> logger;
-        private readonly MessageCounter2 counter;
-
-        public InitProcessConsumer(ILogger<InitProcessConsumer> logger, MessageCounter2 counter)
-        {
-            this.logger = logger;
-            this.counter = counter;
-        }
-
-        public async Task Consume(ConsumeContext<InitProcess> context)
-        {
-            foreach (var id in context.Message.WorkProcessIds)
-            {
-                await context.Send(new DoWork { WorkProcessId = id });
-            }
-
-            counter.Consumed("InitProcess", new[] { context.MessageId.Value });
-        }
-    }
-
-    public class DoWorkConsumer : IConsumer<Batch<DoWork>>
-    {
-        private readonly ILogger<DoWorkConsumer> logger;
-        private readonly MessageCounter2 counter;
-
-        public DoWorkConsumer(ILogger<DoWorkConsumer> logger, MessageCounter2 counter)
-        {
-            this.logger = logger;
-            this.counter = counter;
-        }
-
-        public async Task Consume(ConsumeContext<Batch<DoWork>> context)
-        {
-            await Task.Delay(Program.ConsumersDelay);
-
-            foreach (var msg in context.Message)
-            {
-                await context.Send(new DoSomeExtraWork { WorkProcessId = msg.Message.WorkProcessId });
-            }
-
-            counter.Consumed("DoWork", context.Message.Select(x => x.Message.WorkProcessId).ToArray());
-        }
-    }
-
-    public class DoSomeExtraWorkConsumer : IConsumer<Batch<DoSomeExtraWork>>
-    {
-        private readonly ILogger<DoSomeExtraWorkConsumer> logger;
-        private readonly MessageCounter2 counter;
-
-        public DoSomeExtraWorkConsumer(ILogger<DoSomeExtraWorkConsumer> logger, MessageCounter2 counter)
-        {
-            this.logger = logger;
-            this.counter = counter;
-        }
-
-        public async Task Consume(ConsumeContext<Batch<DoSomeExtraWork>> context)
-        {
-            await Task.Delay(Program.ConsumersDelay);
-            counter.Consumed("DoSomeExtraWork", context.Message.Select(x => x.Message.WorkProcessId).ToArray());
         }
     }
 }
