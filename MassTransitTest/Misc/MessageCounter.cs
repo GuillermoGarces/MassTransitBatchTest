@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GreenPipes.Util;
 
-namespace MassTransitTest
+namespace MassTransitTest.Misc
 {
     public class MessageCounter<T>
     {
@@ -16,7 +16,7 @@ namespace MassTransitTest
 
         public MessageCounter()
         {
-            messageCount = Program.MessagesCount;
+            //messageCount = Program.MessagesCount;
             stopwatch = Stopwatch.StartNew();
         }
 

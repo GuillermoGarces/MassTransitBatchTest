@@ -4,7 +4,7 @@ using System.Linq;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 
-namespace MassTransitTest
+namespace MassTransitTest.Misc
 {
     public static class DuplicatesDetector<T> where T : class
     {

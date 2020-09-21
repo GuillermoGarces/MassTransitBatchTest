@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using MassTransit;
 using MassTransit.Context;
 
-namespace MassTransitTest
+namespace MassTransitTest.Misc
 {
     public static class ConsumeContextExtensions
     {

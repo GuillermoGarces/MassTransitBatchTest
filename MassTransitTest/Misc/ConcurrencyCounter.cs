@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 
-namespace MassTransitTest
+namespace MassTransitTest.Misc
 {
     public static class ConcurrencyCounter<T>
     {
