@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Microsoft.Extensions.Logging;
 
 namespace MassTransitTest
@@ -9,35 +8,29 @@ namespace MassTransitTest
     public class MessageCounter2
     {
         private readonly ILogger<MessageCounter2> logger;
-        private readonly IDictionary<string, List<Guid>> consumedIds = new Dictionary<string, List<Guid>>();
+        private readonly IDictionary<string, HashSet<Guid>> consumedIds = new Dictionary<string, HashSet<Guid>>();
 
         public MessageCounter2(ILogger<MessageCounter2> logger)
         {
             this.logger = logger;
         }
-
-        public void Consumed(string key, Guid[] workProcessIds)
+        
+        public void Consumed(string key, IEnumerable<Guid> receivedIds)
         {
             lock (consumedIds)
             {
-                List<Guid> oldIds;
-                if (consumedIds.TryGetValue(key, out oldIds) == false)
+                if (consumedIds.TryGetValue(key, out var trackedIds) == false)
                 {
-                    oldIds = new List<Guid>();
-                    consumedIds.Add(key, oldIds);
+                    trackedIds = new HashSet<Guid>();
+                    consumedIds.Add(key, trackedIds);
                 }
-
-                var newIds = workProcessIds.Where(x => oldIds.Contains(x) == false).ToArray();
-                oldIds.AddRange(newIds);
-
-                var sb = new StringBuilder();
-                sb.Append("Consumed messages: ");
-                foreach (var item in consumedIds)
-                {                    
-                    sb.AppendFormat(" - Type {0}: {1}", item.Key, item.Value.Count());
+                
+                foreach (var id in receivedIds)
+                {
+                    trackedIds.Add(id);
                 }
-
-                logger.LogInformation(sb.ToString());
+                
+                logger.LogInformation("      {0}", string.Join(" ", consumedIds.Select(x => $"{x.Key} ({x.Value.Count})")));
             }
         }
     }
