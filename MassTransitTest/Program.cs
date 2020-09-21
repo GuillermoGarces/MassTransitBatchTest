@@ -20,6 +20,7 @@ namespace MassTransitTest
     {
         private static readonly int ProcessesCount = 10;
         private static readonly int MessagesCountPerProcess = 5000;
+        public static readonly TimeSpan ConsumersDelay = TimeSpan.FromMilliseconds(200);
 
         static async Task Main(string[] args)
         {
@@ -189,6 +190,8 @@ namespace MassTransitTest
 
         public async Task Consume(ConsumeContext<Batch<DoWork>> context)
         {
+            await Task.Delay(Program.ConsumersDelay);
+
             foreach (var msg in context.Message)
             {
                 await context.Send(new DoSomeExtraWork { WorkProcessId = msg.Message.WorkProcessId });
@@ -211,6 +214,7 @@ namespace MassTransitTest
 
         public async Task Consume(ConsumeContext<Batch<DoSomeExtraWork>> context)
         {
+            await Task.Delay(Program.ConsumersDelay);
             counter.Consumed("DoSomeExtraWork", context.Message.Select(x => x.Message.WorkProcessId).ToArray());
         }
     }
