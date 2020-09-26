@@ -11,7 +11,7 @@ namespace MassTransitTest
 {
     public class DoWork
     {
-        public Guid WorkProcessId { get; set; }
+        public string Id { get; set; }
     }
 
     public class DoWorkConsumerDefinition : ConsumerDefinition<DoWorkConsumer>
@@ -19,10 +19,10 @@ namespace MassTransitTest
         protected override void ConfigureConsumer(IReceiveEndpointConfigurator endpointConfigurator,
             IConsumerConfigurator<DoWorkConsumer> consumerConfigurator)
         {
-            ((IRabbitMqReceiveEndpointConfigurator)endpointConfigurator).PrefetchCount = 1200;
+            ((IRabbitMqReceiveEndpointConfigurator)endpointConfigurator).PrefetchCount = 200;
             consumerConfigurator.Options<BatchOptions>(b =>
             {
-                b.MessageLimit = 300;
+                b.MessageLimit = 200;
                 b.TimeLimit = TimeSpan.FromMilliseconds(200);
                 b.ConcurrencyLimit = 10;
             });
@@ -46,10 +46,13 @@ namespace MassTransitTest
 
             foreach (var msg in context.Message)
             {
-                await context.Send(new DoSomeExtraWork { WorkProcessId = msg.Message.WorkProcessId });
+                for (var i = 1; i <= Program.MessagesCountPerProcess; i++)
+                {
+                    await context.Send(new DoSomeExtraWork { Id = msg.Message.Id + "-" + i });
+                }
             }
 
-            counter.Consumed("DoWork", context.Message.Select(x => x.Message.WorkProcessId).ToArray());
+            counter.Consumed("DoWork", context.Message.Select(x => x.Message.Id).ToArray());
         }
     }
 }

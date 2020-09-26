@@ -12,14 +12,15 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using MassTransit.RabbitMqTransport;
+using MassTransit.Configuration;
 
 namespace MassTransitTest
 {
     class Program
     {
-        private static readonly int ProcessesCount = 20;
-        private static readonly int MessagesCountPerProcess = 5000;
-        public static readonly TimeSpan ConsumersDelay = TimeSpan.FromMilliseconds(200);
+        private static readonly int ProcessesCount = 2;
+        public static readonly int MessagesCountPerProcess = 100;
+        public static readonly TimeSpan ConsumersDelay = TimeSpan.FromMilliseconds(1);
 
         static async Task Main(string[] args)
         {
@@ -27,7 +28,7 @@ namespace MassTransitTest
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
                 .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
-                .MinimumLevel.Override("MassTransit", LogEventLevel.Information)
+                .MinimumLevel.Override("MassTransit", LogEventLevel.Debug)
                 .Enrich.FromLogContext()
                 .WriteTo.Console(outputTemplate:
                     "[{Timestamp:HH:mm:ss.fff} {Level:u3}] {messageId} {Message:lj}{NewLine}{Exception}")
@@ -35,6 +36,8 @@ namespace MassTransitTest
                     outputTemplate:
                     "[{Timestamp:HH:mm:ss.fff} {Level:u3}] {messageId} {Message:lj}{NewLine}{Exception}")
                 .CreateLogger();
+
+            AppContext.SetSwitch(AppContextSwitches.UseInternalCache, true);
 
             var provider = ConfigureServiceProvider();
             LogContext.ConfigureCurrentLogContext(provider.GetRequiredService<ILoggerFactory>());
@@ -48,14 +51,10 @@ namespace MassTransitTest
             {
                 await bus.StartAsync();
 
-                var messages = Enumerable.Range(0, ProcessesCount)
-                    .Select(_ => new InitProcess
-                    {
-                        WorkProcessIds = Enumerable.Range(0, MessagesCountPerProcess)
-                            .Select(x => NewId.NextGuid())
-                            .ToArray()
-                    });
-                await bus.SendConcurrently(messages, 5);
+                var messages = Enumerable.Range(1, ProcessesCount)
+                    .Select(x => new InitProcess { Id = x.ToString("n0") })
+                    .ToArray();
+                await bus.SendConcurrently(messages, ProcessesCount);
 
                 Console.ReadKey();
             }
@@ -96,11 +95,12 @@ namespace MassTransitTest
             {
                 x.Username("guest1");
                 x.Password("guest1");
+                //x.Heartbeat(10);
             });
 
             cfg.PrefetchCount = 10;
 
-            cfg.UseMessageRetry(r => { r.Immediate(1); });
+            cfg.UseMessageRetry(r => r.Exponential(4, TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(10), TimeSpan.FromMilliseconds(500)));
             cfg.UseLogging();
 
             cfg.ConfigureEndpoints(context);

@@ -7,7 +7,7 @@ namespace MassTransitTest
 {
     public class InitProcess
     {
-        public Guid[] WorkProcessIds { get; set; }
+        public string Id { get; set; }
     }
 
     public class InitProcessConsumer : IConsumer<InitProcess>
@@ -23,12 +23,12 @@ namespace MassTransitTest
 
         public async Task Consume(ConsumeContext<InitProcess> context)
         {
-            foreach (var id in context.Message.WorkProcessIds)
+            for (var i = 1; i <= Program.MessagesCountPerProcess; i++)
             {
-                await context.Send(new DoWork { WorkProcessId = id });
+                await context.Send(new DoWork { Id = context.Message.Id + "-" + i });
             }
 
-            counter.Consumed("InitProcess", new[] { context.MessageId.Value });
+            counter.Consumed("InitProcess", new[] { context.Message.Id });
         }
     }
 }

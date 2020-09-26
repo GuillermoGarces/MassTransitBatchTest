@@ -8,20 +8,20 @@ namespace MassTransitTest
     public class MessageCounter2
     {
         private readonly ILogger<MessageCounter2> logger;
-        private readonly IDictionary<string, HashSet<Guid>> consumedIds = new Dictionary<string, HashSet<Guid>>();
+        private readonly IDictionary<string, HashSet<string>> consumedIds = new Dictionary<string, HashSet<string>>();
 
         public MessageCounter2(ILogger<MessageCounter2> logger)
         {
             this.logger = logger;
         }
         
-        public void Consumed(string key, IEnumerable<Guid> receivedIds)
+        public void Consumed(string key, IEnumerable<string> receivedIds)
         {
             lock (consumedIds)
             {
                 if (consumedIds.TryGetValue(key, out var trackedIds) == false)
                 {
-                    trackedIds = new HashSet<Guid>();
+                    trackedIds = new HashSet<string>();
                     consumedIds.Add(key, trackedIds);
                 }
                 
