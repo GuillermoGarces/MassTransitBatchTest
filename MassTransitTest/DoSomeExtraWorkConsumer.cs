@@ -42,6 +42,8 @@ namespace MassTransitTest
 
         public async Task Consume(ConsumeContext<Batch<DoSomeExtraWork>> context)
         {
+            logger.LogDebug("Procesing messages: {0}", string.Join(", ", context.Message.Select(x => x.Message.Id).ToArray()));
+
             await Task.Delay(Program.ConsumersDelay);
             counter.Consumed("DoSomeExtraWork", context.Message.Select(x => x.Message.Id).ToArray());
         }

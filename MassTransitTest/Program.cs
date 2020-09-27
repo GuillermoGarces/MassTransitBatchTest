@@ -42,6 +42,8 @@ namespace MassTransitTest
             var provider = ConfigureServiceProvider();
             LogContext.ConfigureCurrentLogContext(provider.GetRequiredService<ILoggerFactory>());
 
+            var counter = provider.GetRequiredService<MessageCounter2>();
+
             var bus = provider.GetRequiredService<IBusControl>();
 
             var result = bus.GetProbeResult();
@@ -55,6 +57,10 @@ namespace MassTransitTest
                     .Select(x => new InitProcess { Id = x.ToString("n0") })
                     .ToArray();
                 await bus.SendConcurrently(messages, ProcessesCount);
+
+                Console.ReadKey();
+
+                counter.LogMissings(ProcessesCount, MessagesCountPerProcess);
 
                 Console.ReadKey();
             }
