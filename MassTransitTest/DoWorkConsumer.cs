@@ -11,7 +11,7 @@ namespace MassTransitTest
 {
     public class DoWork
     {
-        public string Id { get; set; }
+        public string Key { get; set; }
     }
 
     public class DoWorkConsumerDefinition : ConsumerDefinition<DoWorkConsumer>
@@ -42,19 +42,19 @@ namespace MassTransitTest
 
         public async Task Consume(ConsumeContext<Batch<DoWork>> context)
         {
-            logger.LogDebug("Procesing messages: {0}", string.Join(", ", context.Message.Select(x => x.Message.Id).ToArray()));
+            logger.LogDebug("Procesing messages: {0}", string.Join(", ", context.Message.Select(x => x.Message.Key).ToArray()));
 
             await Task.Delay(Program.ConsumersDelay);
 
             foreach (var msg in context.Message)
             {
-                for (var i = 1; i <= Program.MessagesCountPerProcess; i++)
+                for (var i = 0; i < Program.ExtraWorkCountPerProcess; i++)
                 {
-                    await context.Send(new DoSomeExtraWork { Id = msg.Message.Id + "-" + i });
+                    await context.Send(new DoSomeExtraWork { Key = msg.Message.Key + "-" + i });
                 }
             }
 
-            counter.Consumed("DoWork", context.Message.Select(x => x.Message.Id).ToArray());
+            counter.Consumed("DoWork", context.Message.Select(x => x.Message.Key).ToArray());
         }
     }
 }

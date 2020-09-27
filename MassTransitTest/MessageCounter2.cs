@@ -8,53 +8,61 @@ namespace MassTransitTest
     public class MessageCounter2
     {
         private readonly ILogger<MessageCounter2> logger;
-        private readonly IDictionary<string, HashSet<string>> consumedIds = new Dictionary<string, HashSet<string>>();
+        private readonly IDictionary<string, HashSet<string>> consumedKeys = new Dictionary<string, HashSet<string>>();
 
         public MessageCounter2(ILogger<MessageCounter2> logger)
         {
             this.logger = logger;
         }
 
-        public void Consumed(string key, IEnumerable<string> receivedIds)
+        public void Consumed(string messageType, IEnumerable<string> receivedKeys)
         {
-            lock (consumedIds)
+            lock (consumedKeys)
             {
-                if (consumedIds.TryGetValue(key, out var trackedIds) == false)
+                if (consumedKeys.TryGetValue(messageType, out var trackedKeys) == false)
                 {
-                    trackedIds = new HashSet<string>();
-                    consumedIds.Add(key, trackedIds);
+                    trackedKeys = new HashSet<string>();
+                    consumedKeys.Add(messageType, trackedKeys);
                 }
 
-                foreach (var id in receivedIds)
+                foreach (var id in receivedKeys)
                 {
-                    trackedIds.Add(id);
+                    trackedKeys.Add(id);
                 }
 
-                logger.LogInformation("      {0}", string.Join(" ", consumedIds.Select(x => $"{x.Key} ({x.Value.Count})")));
+                logger.LogInformation("      {0}", string.Join(" ", consumedKeys.Select(x => $"{x.Key} ({x.Value.Count})")));
             }
         }
 
-        internal void LogMissings(int processesCount, int messagesCountPerProcess)
+        internal void LogMissingKeys()
         {
-            var allIds = consumedIds.SelectMany(x => x.Value).ToArray();
+            var allIds = consumedKeys.SelectMany(x => x.Value).ToArray();
 
-            for (var i = 1; i <= processesCount; i++)
+            var missed = new List<string>();
+            for (var i = 0; i < Program.ProcessesCount; i++)
             {
-                for (var j = 1; j <= messagesCountPerProcess; j++)
+                for (var j = 0; j < Program.WorkCountPerProcess; j++)
                 {
-                    var keyJ = string.Format("{0}-{1}", i, j);
+                    var keyJ = $"{i}-{j}";
 
-                    if (allIds.Contains(keyJ) == false)
-                        logger.LogWarning("Missing key: {0}", keyJ);
+                    if (allIds.Contains(keyJ) == false) missed.Add(keyJ);
 
-                    for (var k = 1; k <= messagesCountPerProcess; k++)
+                    for (var k = 0; k < Program.ExtraWorkCountPerProcess; k++)
                     {
-                        var keyK = string.Format("{0}-{1}-{2}", i, j, k);
+                        var keyK = $"{i}-{j}-{k}";
 
-                        if (allIds.Contains(keyK) == false)
-                            logger.LogWarning("Missing key: {0}", keyK);
+                        if (allIds.Contains(keyK) == false) missed.Add(keyK);
                     }
                 }
+            }
+
+            if (missed.Any())
+            {
+                logger.LogError("Missing {0} messages: {1}", missed.Count, string.Join(", ", missed));
+            }
+            else
+            {
+                logger.LogInformation("No missed messages");
             }
         }
     }

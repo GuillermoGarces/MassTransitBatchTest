@@ -18,7 +18,10 @@ namespace MassTransitTest
 {
     class Program
     {
-        public static readonly int MessagesCountPerProcess = 100;
+        public static readonly int ProcessesCount = 3;
+        public static readonly int WorkCountPerProcess = 100;
+        public static readonly int ExtraWorkCountPerProcess = 10;
+        
         public static readonly TimeSpan ConsumersDelay = TimeSpan.FromMilliseconds(1);
 
         static async Task Main(string[] args)
@@ -51,13 +54,14 @@ namespace MassTransitTest
             try
             {
                 await bus.StartAsync();
-                await bus.Send(new InitProcess { Id = "1" });
+                for (var i = 0; i < ProcessesCount; i++)
+                {
+                    await bus.Send(new InitProcess { Key = i.ToString() });
+                }
 
                 Console.ReadKey();
 
-                counter.LogMissings(1, MessagesCountPerProcess);
-
-                Console.ReadKey();
+                counter.LogMissingKeys();
             }
             finally
             {
@@ -92,17 +96,15 @@ namespace MassTransitTest
 
         private static void ConfigureBus(IBusRegistrationContext context, IRabbitMqBusFactoryConfigurator cfg)
         {
-            cfg.Host("localhost", "radventure", x =>
+            cfg.Host("localhost", "/", x =>
             {
-                x.Username("guest1");
-                x.Password("guest1");
-                //x.Heartbeat(10);
+                x.Username("guest");
+                x.Password("guest");
             });
 
             cfg.PrefetchCount = 10;
 
             cfg.UseMessageRetry(r => r.Exponential(4, TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(10), TimeSpan.FromMilliseconds(500)));
-            cfg.UseLogging();
 
             cfg.ConfigureEndpoints(context);
 
