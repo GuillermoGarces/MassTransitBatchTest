@@ -18,7 +18,6 @@ namespace MassTransitTest
 {
     class Program
     {
-        private static readonly int ProcessesCount = 2;
         public static readonly int MessagesCountPerProcess = 100;
         public static readonly TimeSpan ConsumersDelay = TimeSpan.FromMilliseconds(1);
 
@@ -52,15 +51,11 @@ namespace MassTransitTest
             try
             {
                 await bus.StartAsync();
-
-                var messages = Enumerable.Range(1, ProcessesCount)
-                    .Select(x => new InitProcess { Id = x.ToString("n0") })
-                    .ToArray();
-                await bus.SendConcurrently(messages, ProcessesCount);
+                await bus.Send(new InitProcess { Id = "1" });
 
                 Console.ReadKey();
 
-                counter.LogMissings(ProcessesCount, MessagesCountPerProcess);
+                counter.LogMissings(1, MessagesCountPerProcess);
 
                 Console.ReadKey();
             }
